@@ -1,0 +1,89 @@
+name: Test Failures 
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Falcon API URL, to run tests against"
+        required: true
+        default: https://staging-api.tilled.com
+      type:
+        description: "Type of test to run (all/happy/unsatisfactory)"
+        required: true
+        default: all
+jobs:
+  turkey-e2e-tests:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.26.0-focal
+    env:
+      ENVIRONMENT: ${{ github.event.client_payload.pr_url }}${{ github.event.inputs.environment }}
+      COMMENT_ID: ${{ github.event.client_payload.comment_id }}
+      TYPE: ${{ github.event.inputs.type }}
+      PARAMS: ""
+      CHANGED: ""
+      DAY: Mon
+      HEADERS_CHECKS: false
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set Environment Variables
+        if: always()
+        run: | 
+          apt-get update
+          apt-get install -y jq
+          chmod +x ./summary.json
+          PASSED=$(cat ./summary.json | jq -r '.passed[]' | tr '\n' ' ')
+          echo $PASSED  
+          echo "PASSED=$PASSED" >> $GITHUB_ENV 
+          FAILURES=$(cat ./summary.json | jq -r '.failed[]' | tr '\n' ' ')
+          echo $FAILURES  
+          echo "FAILURES=$FAILURES" >> $GITHUB_ENV  
+      - name: Send Slack Notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          fields: repo,eventName,workflow,job,took
+          custom_payload: |
+            {
+              attachments: [{
+                color: '${{ job.status }}' === 'success' ? 'good' : 'failure',
+                title: `${process.env.AS_REPO}`.includes('turkey') ? 'API Automation Run Results' : 'UI Automation Run Results',
+                fields: [{
+                  title: 'Environment',
+                  value: `${{ env.ENVIRONMENT }}`,
+                  short: true
+                },
+                {
+                  title: 'Triggered By',
+                  value: [{'origin': 'pull_request', 'new': 'Pull Request'}, {'origin': 'schedule', 'new': 'Schedule'}, {'origin': 'repository_dispatch', 'new': 'Deploy'}, {'origin': 'workflow_dispatch', 'new': 'GitHub Actions'}].find(item => item.origin === `${process.env.AS_EVENT_NAME}`).new || `${process.env.AS_EVENT_NAME}`,
+                  short: true
+                },
+                {
+                  title: 'Repo',
+                  value: `${process.env.AS_REPO}`,
+                  short: true
+                },
+                {
+                  title: 'Execution Time',
+                  value: `${process.env.AS_TOOK}`,
+                  short: true
+                },
+                {
+                  title: 'Workflow',
+                  value: `${process.env.AS_WORKFLOW}`,
+                  short: true
+                },
+                {
+                  title: 'Total Tests',
+                  value: (`${{ env.FAILURES }}`.match(/.spec.ts/g) || []).length + (`${{ env.PASSED }}`.match(/.spec.ts/g) || []).length,
+                  short: true
+                },
+                {
+                  title: 'Failures',
+                  value: `${{ env.FAILURES }}` === '' ? 'No failures' : `${{ env.FAILURES }}`.replace(/ /g, '\n'),
+                  short: false
+                }]
+              }]
+            }  
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_QUALITY }} # required

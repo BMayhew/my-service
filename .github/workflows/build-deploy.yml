@@ -1,0 +1,38 @@
+name: My Service Build and Deploy
+
+
+on:
+  push:
+    branches:
+      - develop
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "URL to run tests against"
+        required: true
+        default: https://my-site.com
+
+jobs:
+  deploy_staging:
+    name: Staging Deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    steps:
+      - name: Logging the Staging release
+        run: echo "This run is the staging deployment"
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set URL to pass to Tests
+        run: |
+          echo "ENVIRONMENT=http://my-site.com" >> $GITHUB_ENV
+      - name: Build and Deploy
+        run: |
+          echo "Build and Deploy"
+      - name: Kick Off Playwright Test Job
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          repository: bmayhew/my-tests
+          event-type: run-my-tests
+          client-payload: '{"github": ${{ toJson(github) }}}'
