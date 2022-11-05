@@ -32,3 +32,4 @@ jobs:
           repository: bmayhew/my-tests
           event-type: run-my-tests
           client-payload: '{"github": ${{ toJson(github) }}}'
+
