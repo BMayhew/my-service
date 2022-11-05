@@ -4,11 +4,11 @@ The build-deploy.yml file is the job that would get run when the service is upda
 
 The final step is what calls the test repo and kicks off a `test` github action.
 
-NOTE: you will need to created and add a `REPO_ACCESS_TOKEN` to the github action secrets for this to work.
+Dispatch an event to a remote repository using a `repo` scoped [Personal Access Token (PAT)](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
 
-```bash
+```yml
       - name: Kick Off Playwright Test Job
-        uses: peter-evans/repository-dispatch@v1
+        uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           repository: bmayhew/my-tests
