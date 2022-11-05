@@ -1,23 +1,19 @@
 name: My Service Build and Deploy
-
-
 on:
   push:
     branches:
       - develop
-
   workflow_dispatch:
     inputs:
       environment:
         description: "URL to run tests against"
         required: true
         default: https://my-site.com
-
 jobs:
   deploy_staging:
     name: Staging Deploy
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     steps:
       - name: Logging the Staging release
         run: echo "This run is the staging deployment"
